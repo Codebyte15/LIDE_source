@@ -3,7 +3,6 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
 import subprocess, os, re
 from pathlib import Path
-import tkinter.font as tkFont
 import threading
 import webbrowser
 
@@ -58,11 +57,11 @@ else:
     fourthline = ""
             
 BLOCK_KEYWORDS = {
-    ".py":  ('def', 'class', 'if', 'elif', 'else', 'for', 'while', 'try', 'except', 'finally', 'with', 'async'),
-    ".c":   ('if', 'else', 'for', 'while', 'do', 'switch', 'case', 'struct', 'union', 'enum', 'goto'),
-    ".cpp": ('if', 'else', 'for', 'while', 'do', 'switch', 'case', 'struct', 'union', 'enum', 'class', 'try', 'catch'),
-    ".java":('if', 'else', 'for', 'while', 'do', 'switch', 'case', 'try', 'catch', 'finally', 'class', 'interface', 'enum'),
-    ".js":  ('if', 'else', 'for', 'while', 'do', 'switch', 'case', 'function', 'class', 'try', 'catch', 'finally')
+    ".py":  ('def', 'class', 'if', 'elif', 'else', 'for', 'while', 'try', 'except', 'finally', 'with', 'async','{','[','('),
+    ".c":   ('if', 'else', 'for', 'while', 'do', 'switch', 'case', 'struct', 'union', 'enum', 'goto','{','[','('),
+    ".cpp": ('if', 'else', 'for', 'while', 'do', 'switch', 'case', 'struct', 'union', 'enum', 'class', 'try', 'catch','{','[','('),
+    ".java":('if', 'else', 'for', 'while', 'do', 'switch', 'case', 'try', 'catch', 'finally', 'class', 'interface', 'enum','{','[','('),
+    ".js":  ('if', 'else', 'for', 'while', 'do', 'switch', 'case', 'function', 'class', 'try', 'catch', 'finally','{','[','(')
 }
 
 HIGHLIGHT_RULES = {
@@ -177,14 +176,10 @@ root.title("LIDE - (Lightweight Internal Development Editor)")
 
 class IDE:
     editor = None
+    decompile_editor = None
     preview_editor = None
     line_count_label = None
     character_label = None
-    preview_label = None
-    new_btn = None
-    open_btn = None
-    preview_btn = None
-    Color_btn = None
     line_numbers = None
     scrollbar = None
     separator = None
@@ -231,7 +226,11 @@ class IDE:
         run_menu.add_command(label="C++ File (F7)", command=lambda: IDE.run_app("CPP"))
         run_menu.add_command(label="Java File (F8)", command=lambda: IDE.run_app("Java"))
         run_menu.add_command(label="html File (F9)", command=lambda: IDE.run_app("html"))
+        run_menu.add_command(label="CMD (F10)", command=lambda: IDE.run_app("CMD"))
         menubar.add_cascade(label="Run", menu=run_menu)
+        debug_menu = tk.Menu(menubar, tearoff=0)
+        debug_menu.add_command(label="Decompile program to hex", command=lambda: IDE.decompile_app())
+        menubar.add_cascade(label="Decompile", menu=debug_menu)
         help_menu = tk.Menu(menubar, tearoff=0)
         help_menu.add_command(label="About", command=About_section)
         help_menu.add_command(label="Show Shortcuts", command=Shortcuts_section)
@@ -394,7 +393,6 @@ class IDE:
         open(current_file, "w").close()
         content = IDE.editor.get("1.0", "end-1c")
         IDE.editor.delete("1.0", "end")
-        IDE.editor.insert("1.0", content)
         highlight_syntax()
         is_saved = True
         with open(file_name, "w") as f:
@@ -696,6 +694,7 @@ class IDE:
             messagebox.showwarning("No File", "Create or open a file first!")
             return
         ext = os.path.splitext(current_file)[1].lower()
+        IDE.save_file()
         if filetype == "Python":
             import shutil
             if not shutil.which("python"):
@@ -725,7 +724,10 @@ class IDE:
             return
         if filetype == "html":
             webbrowser.open(current_file)
-
+        if filetype == "CMD":
+            path = os.path.dirname(current_file) or '.'
+            subprocess.Popen("start cmd", shell=True, cwd=path)      
+            
     @staticmethod
     def Dark_Mode():
         global color, fg_color, bg_color, Colorbutton, line_num, line_num_fg
@@ -797,7 +799,57 @@ class IDE:
             IDE.line_numbers.configure(fg_color=line_num, text_color=line_num_fg)
         if IDE.scrollbar:
             IDE.scrollbar.configure(fg_color=line_num)
-
+    
+    @staticmethod    
+    def decompile_app():
+        data = filedialog.askopenfilename(
+            title="Select the file",
+            filetypes=(("Executable files", "*.exe"), ("All files", "*.*")),
+        )
+        if not data:
+            return
+        data_size = os.path.getsize(data) 
+        if data_size >= 20971520:
+            messagebox.showinfo("Large File", "The file is too large")
+            return
+        try:
+            with open(data, "rb") as f:
+                binary_data = f.read()
+            hex_data = binary_data.hex(" ").upper()
+            bytes_list = hex_data.split()
+            formatted = "\n".join(
+                " ".join(bytes_list[i:i + 16]) for i in range(0, len(bytes_list), 16)
+            )
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to read the file: {e}")
+            return
+        if IDE.decompile_editor is not None:
+            try:
+                IDE.decompile_editor.destroy()
+            except:
+                pass
+            IDE.decompile_editor = None      
+        IDE.decompile_editor = tk.Tk()
+        IDE.decompile_editor.configure(bg="gray15")
+        IDE.decompile_editor.attributes('-topmost', True)
+        try:
+            IDE.decompile_editor.wm_iconbitmap("icon/lide.ico")
+        except Exception:
+            pass
+        IDE.decompile_editor.resizable(False, False)
+        IDE.decompile_editor.geometry("600x500")
+        IDE.decompile_editor.title(data)
+        text_decompile = tk.Text(
+            IDE.decompile_editor,
+            font=("Consolas", 12),
+            bg="gray15",
+            fg ="white",
+            wrap="none"
+        )
+        text_decompile.insert("0.0", formatted)
+        text_decompile.pack(fill="both", expand=True)
+        IDE.decompile_editor.mainloop()
+        
 def update_title():
     global current_file, is_saved
     name = current_file if current_file else "Untitled"
@@ -849,15 +901,17 @@ def auto_indent(event=None):
     leading_spaces = len(current_line) - len(current_line.lstrip(' '))
     increase_indent = False
     stripped = current_line.strip()
+
     for kw in keywords:
         if ext == ".py":
             if stripped.startswith(kw) and stripped.endswith(':'):
                 increase_indent = True
                 break
         else:
-            if stripped.startswith(kw):
+            if stripped.startswith(kw) or stripped.endswith(kw):
                 increase_indent = True
                 break
+
     IDE.editor.insert("insert", "\n")
     spaces = ' ' * leading_spaces
     if increase_indent:
@@ -914,27 +968,27 @@ In this new version, you will get:
 2) Better Responsiveness
 3) Syntax Highlighting
 4) Improved File Handling
-5) Bug Fixes with More Tabs"""
+5) Bug Fixes with More Tabs
+6) Auto Indent"""
     )
     return
 
 def Shortcuts_section():
     messagebox.showinfo(
-        "About",
+        "Shortcuts",
         """Shortcuts are listed below
 1) SAVE FILE - CTRL + S
 2) NEW FILE - CTRL + N
 3) OPEN FILE - CTRL + O
-4) RUN - Python(F5) ,C (F6) ,C++ (F7) ,Java (F8) ,HTML (F9)"""
+4) RUN - Python(F5) ,C (F6) ,C++ (F7) ,Java (F8) ,HTML (F9), CMD(F10)"""
     )
     return
 def on_editor_mousewheel(event):
     global zoom
 
-    ctrl_pressed = (event.state & 0x4) != 0  # Detect Ctrl key
+    ctrl_pressed = (event.state & 0x4) != 0 
 
     if ctrl_pressed:
-        # Zoom in/out
         if hasattr(event, 'delta'):
             zoom += 1 if event.delta > 0 else -1
         else:
@@ -951,9 +1005,8 @@ def on_editor_mousewheel(event):
         if IDE.line_numbers:
             IDE.line_numbers.configure(font=("Consolas", zoom))
         IDE.update_line_numbers()
-        return "break"  # prevent scroll
+        return "break"
     else:
-        # Normal scroll
         if hasattr(event, 'delta'):
             scroll_units = int(-1 * (event.delta / 120))
             IDE.editor.yview_scroll(scroll_units, "units")
