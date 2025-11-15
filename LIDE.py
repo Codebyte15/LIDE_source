@@ -7,22 +7,6 @@ import threading
 import webbrowser
 import requests
 
-Version = "v2.1.1"
-OWNER = "Codebyte15"
-REPO = "Lide_Code"
-
-url = f"https://api.github.com/repos/{OWNER}/{REPO}/releases/latest"
-release = requests.get(url).json()
-latest_version = release["tag_name"]
-
-if Version != latest_version:
-    message = messagebox.askyesno(
-        "Download", 
-        f"A New Version Of Lide ({latest_version}) Is Available\nDo You Want To Download It?"
-    )
-    if message:
-        webbrowser.open("https://codebyte15.github.io/Lide_Code")
-        
 current_file = None
 is_saved = True
 zoom = int(18)
