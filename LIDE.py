@@ -174,7 +174,7 @@ root.geometry(f"{root.winfo_screenwidth()}x{root.winfo_screenheight()}")
 root.after(100, lambda:root.state("zoomed"))
 root.minsize(500, 500)
 root.maxsize(5000, 5000)
-root.title("LIDE - (Lightweight Internal Development Editor) v2.2.0")
+root.title("LIDE - (Lightweight Internal Development Editor) v2.1.1")
 
 class IDE:
     editor = None
