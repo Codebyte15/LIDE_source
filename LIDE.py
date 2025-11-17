@@ -6,6 +6,7 @@ from pathlib import Path
 import threading
 import webbrowser
 import requests
+import zipfile
 
 current_file = None
 is_saved = True
@@ -173,7 +174,7 @@ root.geometry(f"{root.winfo_screenwidth()}x{root.winfo_screenheight()}")
 root.after(100, lambda:root.state("zoomed"))
 root.minsize(500, 500)
 root.maxsize(5000, 5000)
-root.title("LIDE - (Lightweight Internal Development Editor)")
+root.title("LIDE - (Lightweight Internal Development Editor) v2.2.0")
 
 class IDE:
     editor = None
@@ -965,12 +966,8 @@ def About_section():
         """LIDE is a Simple Text Editor
 
 In this new version, you will get:
-1) Modern UI
-2) Better Responsiveness
-3) Syntax Highlighting
-4) Improved File Handling
-5) Bug Fixes with More Tabs
-6) Auto Indent"""
+1) Auto Version Checker And Downloader
+2) Bug Fixes with More Tabs"""
     )
     return
 
@@ -1045,4 +1042,73 @@ IDE.editor.bind("<Return>", auto_indent)
 IDE.editor.bind("<Control-z>", lambda e: IDE.editor.event_generate("<<Undo>>"))
 IDE.editor.bind("<Control-y>", lambda e: IDE.editor.event_generate("<<Redo>>"))
 root.protocol("WM_DELETE_WINDOW", on_close)
+
+VERSION = "v2.1.1"
+BASE_URL = "https://github.com/Codebyte15/Lide_Code/releases/download"
+
+def update_download(latest_tag):
+    url = "https://github.com/Codebyte15/Lide_Code"
+    timeout = 5 
+    try:
+        response = requests.get(url, timeout=timeout)
+        if response.status_code == 200:
+            print("Internet is working")
+        else:
+            messagebox.showinfo("Connection","Internet might be down (status code != 200)")
+    except requests.ConnectionError:
+        messagebox.showinfo("Connection","Internet is Not Working")
+
+    try:
+        url = f"{BASE_URL}/{latest_tag}/LIDE_{latest_tag}-setup.zip"
+        downloads = Path.home() / "Downloads"
+        zip_path = downloads / "LIDE_setup.zip"
+        extract_dir = downloads / "LIDE_extracted"
+        headers = {"User-Agent": "Mozilla/5.0"}
+
+        with requests.get(url, stream=True, headers=headers) as r:
+            r.raise_for_status()
+            with open(zip_path, "wb") as f:
+                for chunk in r.iter_content(8192):
+                    if chunk:
+                        f.write(chunk)
+
+        with zipfile.ZipFile(zip_path, "r") as z:
+            z.extractall(extract_dir)
+
+        for file in os.listdir(extract_dir):
+            if file.lower().endswith(".exe"):
+                subprocess.Popen(os.path.join(extract_dir, file), shell=True)
+                break
+    except Exception as e:
+        print("Update failed:", e)
+
+def check_update():
+    owner = "Codebyte15"
+    repo = "Lide_Code"
+    url = f"https://api.github.com/repos/{owner}/{repo}/tags"
+
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        tags = response.json()
+        if not tags:
+            return None
+
+        latest_tag = tags[0]["name"]
+
+        if VERSION != latest_tag:
+            verify_update = messagebox.askyesno("Update", f"New version {latest_tag} available.\nDownload now?")
+            if verify_update:
+                update_download(latest_tag)
+                root.after(500, lambda: root.quit())
+                return
+            root.after(100, lambda:root.state("zoomed"))
+        return latest_tag
+
+    except Exception as e:
+        print("Error checking update:", e)
+        return None
+
+check_update()
+
 root.mainloop()
