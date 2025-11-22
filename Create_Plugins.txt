@@ -1,0 +1,28 @@
+                              """ Documentation ( optional)"""
+
+# The Basic Funtion For Entry
+
+def setup_plugin(IDE, root, current_file , zoom):
+     
+    """ rest of the code"""
+
+
+
+# IDE CONTAINS ALL THE ELEMENTS UNDER CLASS "IDE" OF THE MAIN SCRIPT.
+
+# ROOT IS THE MAIN AREA WHERE THE WINDOW IS RUNNING
+
+# REMEMBER THE PLUGINS MUST CONTAIN ONLY THE DEFAULT LIBRARIES OF PYTHON 
+
+FEW EXTERNAL LIBRARIES WHICH YOU CAN ADD :-- 
+
+1) customtkinter 
+2) requests
+
+
+
+# ON LATER UPDATES MORE LIBRARIES WILL BE ADDED
+
+TO UPLOAD THE PLUGIN 
+
+MESSAGE ME ON @astro_moinak INSTAGRAM ACCOUNT
